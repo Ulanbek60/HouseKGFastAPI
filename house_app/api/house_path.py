@@ -4,6 +4,17 @@ from house_app.db.models import HouseData
 from house_app.db.schema import HouseDataSchema
 from house_app.db.database import SessionLocal
 from typing import List
+import joblib
+import os
+import numpy as np
+import pandas as pd
+from pathlib  import Path
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LinearRegression
+
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
 
 house_router = APIRouter(prefix='/house', tags=['House'])
 
@@ -60,3 +71,37 @@ async def delete_house(house_id: int, db: Session = Depends(get_db)):
     db.delete(house)
     db.commit()
     return {"message": "Дом успешно удалён"}
+
+
+model_path = BASE_DIR / 'house_price_model_job.pkl'
+scaler_path = BASE_DIR / 'scaler.pkl'
+
+model = joblib.load(model_path)
+scaler = joblib.load(scaler_path)
+
+model_features = [
+  "GrLivArea",
+  "YearBuilt",
+  "GarageCars",
+  "TotalBsmtSF",
+  "FullBath",
+  "OverallQual",
+  "Neighborhood",
+]
+
+@house_router.post('/predict/')
+async def predict_price(house: HouseDataSchema, db: Session = Depends(get_db)):
+    input_data = {
+        "GrLivArea": house.GrLivArea,
+        "YearBuilt": house.YearBuilt,
+        "GarageCars": house.GarageCars,
+        "TotalBsmtSF": house.TotalBsmtSF,
+        "FullBath": house.FullBath,
+        "OverallQual": house.OverallQual
+    }
+    input_df = pd.DataFrame([input_data])
+
+    input_scaled = scaler.transform(input_df)
+    predicted_price  = model.predict(input_scaled)[0]
+    return {'predicted_price: ': round(predicted_price )}
+
