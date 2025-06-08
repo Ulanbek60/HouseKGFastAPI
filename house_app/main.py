@@ -34,4 +34,4 @@ house.include_router(house_path.house_router)
 
 if __name__ == "__main__":
     uvicorn.run(house, host="127.0.0.1", port=8001)
-
+ 
